@@ -1,127 +1,221 @@
-
-// GameBoard code below
-
-function distance(a, b) {
-    var difX = a.x - b.x;
-    var difY = a.y - b.y;
-    return Math.sqrt(difX * difX + difY * difY);
-};
-
-function Circle(game) {
-    this.player = 1;
-    this.radius = 20;
-    this.colors = ["Red", "Green", "Blue", "White"];
-    this.color = 3;
-    Entity.call(this, game, this.radius + Math.random() * (800 - this.radius * 2), this.radius + Math.random() * (800 - this.radius * 2));
-    this.velocity = { x: Math.random() * 100, y: Math.random() * 100 };
-    var speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-    if (speed > maxSpeed) {
-        var ratio = maxSpeed / speed;
-        this.velocity.x *= ratio;
-        this.velocity.y *= ratio;
-    };
+//random number start at 1 until max(included)
+function getRndInteger(max) {
+    return Math.floor(Math.random() * (max)) + 1;
 }
 
-Circle.prototype = new Entity();
-Circle.prototype.constructor = Circle;
+//animation
+function Animation(spriteSheet, startX, startY, frameWidth, frameHeight, frameDuration, frames, loop, scale) {//sheetWidth, 
+    this.spriteSheet = spriteSheet;
+    this.startX = startX;
+    this.startY = startY;
+    this.frameWidth = frameWidth;
+    this.frameHeight = frameHeight;
+    this.frameDuration = frameDuration;
+    this.frames = frames;
+    this.loop = loop;
+    this.scale = scale;
 
-Circle.prototype.collideRight = function () {
-    return this.x + this.radius > 800;
-};
-Circle.prototype.collideLeft = function () {
-    return this.x - this.radius < 0;
-};
-Circle.prototype.collideBottom = function () {
-    return this.y + this.radius > 800;
-};
-Circle.prototype.collideTop = function () {
-    return this.y - this.radius < 0;
+    this.totalTime = frameDuration * frames;
+    this.elapsedTime = 0;
+}
+
+Animation.prototype.drawFrame = function (tick, ctx, x, y) {
+    this.elapsedTime += tick;
+    if (this.loop) {
+        if (this.isDone()) {
+            this.elapsedTime = 0;
+        }
+    } else if (this.isDone()) {
+        return;
+    }
+
+    var xindex = this.currentFrame();
+    var yindex = 0;
+
+    ctx.drawImage(this.spriteSheet,
+        xindex * this.frameWidth + this.startX, yindex * this.frameHeight + this.startY,  // source from sheet
+        this.frameWidth, this.frameHeight,
+        x, y,
+        this.frameWidth * this.scale,
+        this.frameHeight * this.scale);
+}
+
+Animation.prototype.currentFrame = function () {
+    return Math.floor(this.elapsedTime / this.frameDuration);
+}
+
+Animation.prototype.isDone = function () {
+    return (this.elapsedTime >= this.totalTime);
+}
+
+
+//car
+function Car(game) {
+    this.x = 0;
+    this.y = 0;
+    this.game = game;
+    this.size = 264 / 4;
+    this.scale = 0.9;
+    this.animationR = new Animation(ASSET_MANAGER.getAsset("./img/car-clipart-game-maker-10.jpg"), 0, this.size * 2,    this.size,  this.size, 0.2, 4, true, this.scale);
+    this.animationL = new Animation(ASSET_MANAGER.getAsset("./img/car-clipart-game-maker-10.jpg"), 0, this.size,        this.size,  this.size, 0.2, 4, true, this.scale);
+    this.animationU = new Animation(ASSET_MANAGER.getAsset("./img/car-clipart-game-maker-10.jpg"), 0, this.size * 3,    this.size,  this.size, 0.2, 4, true, this.scale);
+    this.animationD = new Animation(ASSET_MANAGER.getAsset("./img/car-clipart-game-maker-10.jpg"), 0, 0,                this.size,  this.size, 0.2, 4, true, this.scale);
+    this.direction = 1;//1R 2L 3U 4D
+    this.random_max = 20;//getRndInteger(this.random_max)
+    this.speed = init_speed;
+    this.entity;
+}
+
+Car.prototype = new Entity();
+Car.prototype.constructor = Car;
+
+Car.prototype.distance = function (ent) {
+    var distance;
+    if (this.entity == 0) {
+        if (this.direction == 1 && this.x > ent.x
+            || this.direction == 2 && this.x < ent.x
+            || this.direction == 3 && this.y < ent.y
+            || this.direction == 4 && this.y > ent.y) {
+            distance = 800 * 4 - Math.abs(this.x - ent.x) + Math.abs(this.y - ent.y);
+        }
+
+    } else {
+        distance = Math.abs(this.x - ent.x) + Math.abs(this.y - ent.y);
+    }
+    return distance;
 };
 
-Circle.prototype.collide = function (other) {
-    return distance(this, other) < this.radius + other.radius;
-};
+Car.prototype.update = function () {
+    //running around four side Clockwise
+    if (this.x < 800 - 60
+        && this.y <= 0) {
+        this.y = 0;
+        this.direction = 1;
+        this.x += this.speed;
+    } else if (this.x >= 800 - 60
+        && this.y < 800 - 60) {
+        this.x = 800 - 60;
+        this.direction = 4;
+        this.y += this.speed;
+    } else if (this.x > 0
+        && this.y >= 800 - 60) {
+        this.y = 800 - 60;
+        this.direction = 2;
+        this.x -= this.speed;
+    } else if (this.x <= 0
+        && this.y > 0) {
+        this.x = 0;
+        this.direction = 3;
+        this.y -= this.speed;
+    }
 
-Circle.prototype.update = function () {
+
+    var entity_index;
+    for (var i = 0; i < this.game.entities.length; i++) {
+        var ent = this.game.entities[i];
+        if (this == ent) {
+            entity_index = i;
+            break;
+        }
+    }
+
+    var previous_entity_index;
+    if (entity_index == 0) {
+        previous_entity_index = this.game.entities.length - 1;
+    } else {
+        previous_entity_index = entity_index - 1;
+    }
+
+    if (this.distance(this.game.entities[previous_entity_index]) > this.size && this.speed < init_speed) {
+        this.speed++;
+    } else if (this.distance(this.game.entities[previous_entity_index]) < this.size && this.speed > 0) {
+        this.speed--;
+    }
+    if (this.distance(this.game.entities[previous_entity_index]) < this.size * 0.8) {
+        this.speed = 0;
+    }
+    if (this.game.entities.length == 1) {
+        this.speed = init_speed;
+    }
+    if (start_hit_break){
+        if (getRndInteger(this.random_max) == 1) {
+            this.speed = 0;
+        }
+    }
+
     Entity.prototype.update.call(this);
 
-    this.x += this.velocity.x * this.game.clockTick;
-    this.y += this.velocity.y * this.game.clockTick;
-
-    if (this.collideLeft() || this.collideRight()) {
-        this.velocity.x = -this.velocity.x;
-    }
-    if (this.collideTop() || this.collideBottom()) {
-        this.velocity.y = -this.velocity.y;
-    }
-
-    for (var i = 0; i < this.game.entities.length; i++) {
-        var ent = this.game.entities[i];
-        if (this != ent && this.collide(ent)) {
-            var temp = this.velocity;
-            this.velocity = ent.velocity;
-            ent.velocity = temp;
-        };
-    };
-
-    for (var i = 0; i < this.game.entities.length; i++) {
-        var ent = this.game.entities[i];
-        if (this != ent) {
-            var dist = distance(this, ent);
-            var difX = (ent.x - this.x) / dist;
-            var difY = (ent.y - this.y) / dist;
-            this.velocity.x += difX / (dist * dist) * acceleration;
-            this.velocity.y += difY / (dist * dist) * acceleration;
-
-            var speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
-            if (speed > maxSpeed) {
-                var ratio = maxSpeed / speed;
-                this.velocity.x *= ratio;
-                this.velocity.y *= ratio;
-            };
-        };
-    }
-
-    this.velocity.x -= (1 - friction) * this.game.clockTick * this.velocity.x;
-    this.velocity.y -= (1 - friction) * this.game.clockTick * this.velocity.y;
-
 }
 
-Circle.prototype.draw = function (ctx) {
-    ctx.beginPath();
-    ctx.fillStyle = this.colors[this.color];
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2, false);
-    ctx.fill();
-    ctx.closePath();
+Car.prototype.draw = function (ctx) {
+    ctx.save();
+    if (this.direction === 1) {
+        this.animationR.drawFrame(this.game.clockTick, ctx, this.x, this.y);
+    }
+    if (this.direction === 2) {
+        this.animationL.drawFrame(this.game.clockTick, ctx, this.x, this.y);
+    }
+    if (this.direction === 3) {
+        this.animationU.drawFrame(this.game.clockTick, ctx, this.x, this.y);
+    }
+    if (this.direction === 4) {
+        this.animationD.drawFrame(this.game.clockTick, ctx, this.x, this.y);
+    }
+    ctx.restore();
+    if (start_hit_break) {
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = 'white';
+        ctx.font = "40px Sans-serif";
+        ctx.strokeText("Start hit breaks", 250, 400);
+        ctx.fillText("Start hit breaks", 250, 400);
+    } else {
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = 'white';
+        ctx.font = "40px Sans-serif";
+        ctx.strokeText("Not hit breaks", 250, 400);
+        ctx.fillText("Not hit breaks", 250, 400);
+    }
+    Entity.prototype.draw.call(this);
 }
 
-var friction = 1;
-var acceleration = 10000;
-var maxSpeed = 2000;
 
 // the "main" code begins here
-
 var ASSET_MANAGER = new AssetManager();
-
-ASSET_MANAGER.queueDownload("./img/960px-Blank_Go_board.png");
-ASSET_MANAGER.queueDownload("./img/black.png");
-ASSET_MANAGER.queueDownload("./img/white.png");
-
+ASSET_MANAGER.queueDownload("./img/car-clipart-game-maker-10.jpg");
+var init_speed = 10;
+var car_count = 25;
+var start_hit_break = false;
 ASSET_MANAGER.downloadAll(function () {
     console.log("starting up da sheild");
     var canvas = document.getElementById('gameWorld');
     var ctx = canvas.getContext('2d');
-
     var gameEngine = new GameEngine();
-    var circle = new Circle(gameEngine);
-    circle.color = 0;
-    gameEngine.addEntity(circle);
-
-    for (var i = 0; i < 30; i++) {
-        circle = new Circle(gameEngine);
-        gameEngine.addEntity(circle);
-    };
-
     gameEngine.init(ctx);
+
+
+    var Cars = new Car(gameEngine);
+    gameEngine.addEntity(Cars);
+
     gameEngine.start();
+
+    var timesRun = 1;
+    //repeatly add Cars
+    var interval = setInterval(function () {
+        Cars = new Car(gameEngine);
+        gameEngine.addEntity(Cars);
+        timesRun += 1;
+        if (timesRun === car_count) {
+            clearInterval(interval);
+        }
+    }, 100 / init_speed * 20); 
+
+    var start = 0
+    var interval2 = setInterval(function () {
+        start += 1;
+        if (start === 2) {
+            clearInterval(interval2);
+            start_hit_break = true;
+        }
+    }, 5000); 
+
 });
