@@ -189,17 +189,18 @@ Car.prototype.draw = function (ctx) {
 }
 
 window.onload = function () {
-    console.log("starting up da sheild");
+    console.log("starting up window.onload = function ()");
     var messages = [];
     var field = document.getElementById("field");
     var username = document.getElementById("username");
 
     socket.on("ping", function (ping) {
-        console.log(ping);
-        socket.emit("pong");
+        console.log("ping");
+        socket.emit(ping);
     });
 
     socket.on('sync', function (data) {
+		console.log("sync");
         console.log(data.length +" messages synced.");
         messages = data;
         var html = '';
@@ -212,6 +213,7 @@ window.onload = function () {
     });
 
     socket.on('message', function (data) {
+		console.log("message");
         if (data.message) {
             messages.push(data);
             // update html
@@ -228,10 +230,14 @@ window.onload = function () {
     });
 
 	socket.on("load", function (data) {
-		console.log(arr);
+		console.log("load");
+		console.log(data);
 	});
 
-		
+	socket.on("save", function (data) {
+		console.log("save");
+		console.log(data);
+	});
 
     socket.on("connect", function () {
         console.log("Socket connected.")
@@ -244,7 +250,6 @@ window.onload = function () {
     });
 
 };
-
 
 
 // the "main" code begins here
