@@ -149,7 +149,6 @@ Car.prototype.update = function () {
 			// console.log(ent.x, ent.y, ent.direction);
 		}
 		saving = false;
-		var socket = io.connect("http://24.16.255.56:8888");
 		socket.emit("save", { studentname: "Dongsheng Han", statename: "States X Y Direction", arr});
 		socket.emit("load", { studentname: "Dongsheng Han", statename: "States X Y Direction" });
     }
@@ -189,6 +188,64 @@ Car.prototype.draw = function (ctx) {
     Entity.prototype.draw.call(this);
 }
 
+window.onload = function () {
+    console.log("starting up da sheild");
+    var messages = [];
+    var field = document.getElementById("field");
+    var username = document.getElementById("username");
+
+    socket.on("ping", function (ping) {
+        console.log(ping);
+        socket.emit("pong");
+    });
+
+    socket.on('sync', function (data) {
+        console.log(data.length +" messages synced.");
+        messages = data;
+        var html = '';
+        for (var i = 0; i < messages.length; i++) {
+            html += '<b>' + (messages[i].username ? messages[i].username : 'Server') + ': </b>';
+            html += messages[i].message + '<br />';
+        }
+        content.innerHTML = html;
+        content.scrollTop = content.scrollHeight;
+    });
+
+    socket.on('message', function (data) {
+        if (data.message) {
+            messages.push(data);
+            // update html
+            var html = '';
+            for (var i = 0; i < messages.length; i++) {
+                html += '<b>' + (messages[i].username ? messages[i].username : 'Server') + ': </b>';
+                html += messages[i].message + '<br />';
+            }
+            content.innerHTML = html;
+            content.scrollTop = content.scrollHeight;
+        } else {
+            console.log("There is a problem:", data);
+        }
+    });
+
+	socket.on("load", function (data) {
+		console.log(arr);
+	});
+
+		
+
+    socket.on("connect", function () {
+        console.log("Socket connected.")
+    });
+    socket.on("disconnect", function () {
+        console.log("Socket disconnected.")
+    });
+    socket.on("reconnect", function () {
+        console.log("Socket reconnected.")
+    });
+
+};
+
+
 
 // the "main" code begins here
 var ASSET_MANAGER = new AssetManager();
@@ -198,7 +255,7 @@ var car_count = 25;
 var start_hit_break = false;
 var saving = true;
 var arr = [];
-
+var socket = io.connect("http://24.16.255.56:8888");
 ASSET_MANAGER.downloadAll(function () {
     console.log("starting up da sheild");
     var canvas = document.getElementById('gameWorld');
