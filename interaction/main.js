@@ -86,7 +86,7 @@ Car.prototype.distance = function (ent) {
 };
 
 Car.prototype.update = function () {
-    //running around four side Clockwise
+    //run around four side Clockwise
     if (this.x < 800 - 60
         && this.y <= 0) {
         this.y = 0;
@@ -142,6 +142,17 @@ Car.prototype.update = function () {
             this.speed = 0;
         }
     }
+	if (start_hit_break && saving){
+		for (var i = 0; i < this.game.entities.length; i++) {
+			var ent = this.game.entities[i];
+			arr.push(ent.x, ent.y, ent.direction);
+			// console.log(ent.x, ent.y, ent.direction);
+		}
+		saving = false;
+		var socket = io.connect("http://24.16.255.56:8888");
+		socket.emit("save", { studentname: "Dongsheng Han", statename: "States X Y Direction", arr});
+		socket.emit("load", { studentname: "Dongsheng Han", statename: "States X Y Direction" });
+    }
 
     Entity.prototype.update.call(this);
 
@@ -185,6 +196,9 @@ ASSET_MANAGER.queueDownload("./img/car-clipart-game-maker-10.jpg");
 var init_speed = 10;
 var car_count = 25;
 var start_hit_break = false;
+var saving = true;
+var arr = [];
+
 ASSET_MANAGER.downloadAll(function () {
     console.log("starting up da sheild");
     var canvas = document.getElementById('gameWorld');
